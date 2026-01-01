@@ -1,0 +1,10 @@
+__pycache__
+nltk_data
+*.pyc
+.env
+venv
+.venv
+.DS_Store
+articles.json
+
+mongo-data/

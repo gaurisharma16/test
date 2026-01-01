@@ -1,0 +1,9 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb-stock-brocker-assistant
+    volumes:
+      - ./mongo-data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
