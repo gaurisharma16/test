@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 from datetime import timedelta
@@ -23,11 +24,11 @@ from services.email_service.sender import EmailSenderError, send_email
 
 load_dotenv()
 
+
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-BACKEND_BASE_URL = "https://finexa-ai-5bub.onrender.com"
-
+BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -89,9 +90,10 @@ async def register(user: UserCreate):
                 <p>This link will expire in 24 hours.</p>
                 """,
             )
-        except EmailSenderError:
-            # Do not block signup if email delivery fails
-            pass
+        except EmailSenderError as e:
+            # Log the error but don't block signup
+            logging.error(f"Failed to send verification email to {user.email}: {str(e)}")
+            logging.error(f"User can still login after manual verification or use resend-verification endpoint")
 
         return UserPublic.model_validate(db_user.model_dump(by_alias=True))
     except ValueError as e:
@@ -195,6 +197,7 @@ async def resend_verification_email(payload: ResendVerification):
         )
         return {"message": "Verification email sent"}
     except EmailSenderError as e:
+        logging.error(f"Failed to resend verification email to {payload.email}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
 
