@@ -25,6 +25,7 @@ dependencies = [
     "yfinance>=0.2.44",
     "jose>=1.0.0",
     "motor>=3.7.1",
+    "sendgrid>=6.12.5",
 ]
 
 [dependency-groups]
