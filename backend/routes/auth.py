@@ -24,13 +24,15 @@ from services.email_service.sender import EmailSenderError, send_email
 
 load_dotenv()
 
-
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
-router = APIRouter(prefix="/auth", tags=["authentication"])
 
+# This must be set in Render env:
+# BACKEND_BASE_URL=https://finexa-ai-5bub.onrender.com
+BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
+
+router = APIRouter(prefix="/auth", tags=["authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
@@ -47,9 +49,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
             raise credentials_exception
         token_data = TokenData(email=email)
     except JWTError:
-        raise credentials_exception
-
-    if token_data.email is None:
         raise credentials_exception
 
     user = await AuthService.get_user_by_email(token_data.email)
@@ -70,7 +69,7 @@ async def get_current_active_user(
 async def register(user: UserCreate):
     try:
         db_user = await AuthService.create_user(user)
-        # Send verification email
+
         try:
             verification_token = AuthService.create_access_token(
                 data={"sub": user.email, "type": "verification"},
@@ -91,11 +90,10 @@ async def register(user: UserCreate):
                 """,
             )
         except EmailSenderError as e:
-            # Log the error but don't block signup
-            logging.error(f"Failed to send verification email to {user.email}: {str(e)}")
-            logging.error(f"User can still login after manual verification or use resend-verification endpoint")
+            logging.error(f"Failed to send verification email to {user.email}: {e}")
 
         return UserPublic.model_validate(db_user.model_dump(by_alias=True))
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -107,16 +105,16 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified",
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
     access_token = AuthService.create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -132,18 +130,17 @@ async def forgot_password(request: ForgotPassword):
             subject="Reset your password - Stock Broker Assistant",
             body=f"Click this link to reset your password: {reset_url}",
             html=f"""
-            <p>You requested a password reset. Click the link below to reset your password:</p>
+            <p>You requested a password reset. Click the link below:</p>
             <a href="{reset_url}">Reset Password</a>
             <p>This link will expire in 1 hour.</p>
-            <p>If you didn't request this, please ignore this email.</p>
             """,
         )
         return {"message": "Password reset email sent"}
+
     except ValueError:
-        # Don't reveal if email exists or not
         return {"message": "If the email exists, a reset link has been sent"}
     except EmailSenderError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {e}")
 
 
 @router.post("/reset-password")
@@ -196,9 +193,10 @@ async def resend_verification_email(payload: ResendVerification):
             """,
         )
         return {"message": "Verification email sent"}
+
     except EmailSenderError as e:
-        logging.error(f"Failed to resend verification email to {payload.email}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+        logging.error(f"Failed to resend verification email to {payload.email}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {e}")
 
 
 @router.post("/change-password")
