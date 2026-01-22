@@ -123,13 +123,11 @@ async def send_us_filings_email(
         # Send email
         await asyncio.to_thread(
             send_email,
-            email_request.to,
-            subject,
-            body,
-            html,
-            None,
-            email_request.cc,
-            None,
+            to=email_request.to,
+            subject=subject,
+            body=body,
+            html=html,
+            cc=email_request.cc,
         )
 
         return {
@@ -202,13 +200,11 @@ async def send_india_filings_email(
         # Send email
         await asyncio.to_thread(
             send_email,
-            email_request.to,
-            subject,
-            body,
-            html,
-            None,
-            email_request.cc,
-            None,
+            to=email_request.to,
+            subject=subject,
+            body=body,
+            html=html,
+            cc=email_request.cc,
         )
 
         return {

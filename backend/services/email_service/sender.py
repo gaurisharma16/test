@@ -1,4 +1,5 @@
 import os
+from typing import List, Optional
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Cc
 
@@ -11,8 +12,8 @@ def send_email(
     to: str,
     subject: str,
     body: str,
-    html: str | None = None,
-    cc: list[str] | None = None,
+    html: Optional[str] = None,
+    cc: Optional[List[str]] = None,
 ):
     api_key = os.getenv("SENDGRID_API_KEY")
     from_email = os.getenv("EMAIL_FROM")
@@ -28,10 +29,10 @@ def send_email(
         html_content=html or body,
     )
 
-    # Add CC recipients if provided
+    # Add CC if provided
     if cc:
-        for addr in cc:
-            message.add_cc(Cc(addr))
+        for email in cc:
+            message.add_cc(Cc(email))
 
     try:
         sg = SendGridAPIClient(api_key)
